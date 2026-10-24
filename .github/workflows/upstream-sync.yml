@@ -1,0 +1,116 @@
+# Fork-only: keeps `main` a 1:1 mirror of ryanbr/noop and reports whether `custom` still merges.
+#
+# Branch model (ENTWICKLUNGSPLAN.md, Phase 0): `main` carries upstream only, `custom` carries the
+# fork's own work and is rebased onto `main` by hand. This job never touches `custom`; it only
+# fast-forwards `main` and then test-merges `custom` onto the new `main` to warn early.
+#
+# Scheduled workflows run from the repository's DEFAULT branch only. This file lives on `custom`,
+# so either make `custom` the default branch (Settings -> Branches) or start it by hand.
+#
+# Token: GITHUB_TOKEN cannot push commits that touch `.github/workflows/**`, which upstream does
+# regularly. Store a fine-grained PAT (Contents + Workflows: read/write, this repo only) as the
+# secret UPSTREAM_SYNC_TOKEN; without it the job falls back to GITHUB_TOKEN and fails on such commits.
+name: Upstream sync
+
+on:
+  schedule:
+    # Daily, 03:41 UTC. Off the hour, as scheduled jobs on the hour are queued.
+    - cron: '41 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: upstream-sync
+  cancel-in-progress: false
+
+env:
+  UPSTREAM_URL: https://github.com/ryanbr/noop.git
+  UPSTREAM_BRANCH: main
+  MIRROR_BRANCH: main
+  CUSTOM_BRANCH: custom
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.MIRROR_BRANCH }}
+          fetch-depth: 0
+          token: ${{ secrets.UPSTREAM_SYNC_TOKEN || secrets.GITHUB_TOKEN }}
+
+      - name: Fast-forward main to upstream
+        id: ff
+        run: |
+          set -euo pipefail
+          git remote add upstream "$UPSTREAM_URL"
+          git fetch --no-tags upstream "$UPSTREAM_BRANCH"
+          before=$(git rev-parse HEAD)
+          # An ancestor check, not just `merge --ff-only`: that one also "succeeds" when main is
+          # AHEAD of upstream, which would leave a diverged mirror unreported.
+          if ! git merge-base --is-ancestor HEAD "upstream/$UPSTREAM_BRANCH" \
+            || ! git merge --ff-only "upstream/$UPSTREAM_BRANCH"; then
+            echo "reason=\`$MIRROR_BRANCH\` has commits that are not on upstream, so it cannot be fast-forwarded. Move them to \`$CUSTOM_BRANCH\` and reset \`$MIRROR_BRANCH\` to \`upstream/$UPSTREAM_BRANCH\`." >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+          after=$(git rev-parse HEAD)
+          if [ "$before" = "$after" ]; then
+            echo "Already up to date ($after)." >> "$GITHUB_STEP_SUMMARY"
+          else
+            git push origin "HEAD:$MIRROR_BRANCH"
+            echo "Fast-forwarded \`$MIRROR_BRANCH\` $before..$after ($(git rev-list --count "$before..$after") commits)." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Test-merge custom onto main (no push)
+        id: trial
+        run: |
+          set -euo pipefail
+          if ! git fetch --no-tags origin "$CUSTOM_BRANCH"; then
+            echo "No \`$CUSTOM_BRANCH\` branch; skipping the trial merge." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          git config user.name "upstream-sync"
+          git config user.email "upstream-sync@users.noreply.github.com"
+          git checkout --detach "origin/$CUSTOM_BRANCH"
+          if git merge --no-commit --no-ff "$MIRROR_BRANCH" >/dev/null 2>&1; then
+            echo "\`$CUSTOM_BRANCH\` merges cleanly onto \`$MIRROR_BRANCH\` ($(git rev-list --count "origin/$CUSTOM_BRANCH..$MIRROR_BRANCH") upstream commits behind)." >> "$GITHUB_STEP_SUMMARY"
+            git merge --abort
+          else
+            files=$(git diff --name-only --diff-filter=U | sed 's/^/- `/; s/$/`/')
+            git merge --abort
+            {
+              echo "reason<<EOF"
+              echo "\`$CUSTOM_BRANCH\` no longer merges cleanly onto \`$MIRROR_BRANCH\`. Conflicting files:"
+              echo "$files"
+              echo "EOF"
+            } >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+
+      - name: Report failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REASON: ${{ steps.ff.outputs.reason || steps.trial.outputs.reason || 'The sync job failed; see the run log (a push of upstream workflow files without UPSTREAM_SYNC_TOKEN is the usual cause).' }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -uo pipefail
+          printf '%s\n\nRun: %s\n' "$REASON" "$RUN_URL" | tee -a "$GITHUB_STEP_SUMMARY"
+          # Issues may be disabled on the fork; the failed run itself (and GitHub's failure email)
+          # is the notification then.
+          if [ "$(gh api "repos/$GITHUB_REPOSITORY" --jq .has_issues)" != "true" ]; then
+            echo "Issues are disabled; not opening one."
+            exit 0
+          fi
+          title="Upstream sync needs attention"
+          existing=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --search "\"$title\" in:title" --json number --jq '.[0].number // empty')
+          body=$(printf '%s\n\nRun: %s\n' "$REASON" "$RUN_URL")
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --repo "$GITHUB_REPOSITORY" --body "$body"
+          else
+            gh issue create --repo "$GITHUB_REPOSITORY" --title "$title" --body "$body"
+          fi
