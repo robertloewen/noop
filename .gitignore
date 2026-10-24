@@ -118,3 +118,11 @@ tools/linux-capture/*.db
 tools/linux-capture/*.db-wal
 tools/linux-capture/*.db-shm
 tools/linux-capture/captures/
+
+# ── Fork (custom branch): calibration research — see ENTWICKLUNGSPLAN.md ──
+# Local health data, exports and API tokens never enter git. `*.sqlite` and `.env` are already
+# covered above; they are repeated here so this block stays complete on its own after upstream edits.
+research/data/
+*.sqlite
+*.zip
+.env
