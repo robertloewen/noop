@@ -65,7 +65,10 @@ noop/
   - `upstream` ist nur ein lokales Remote, also pro Klon einmal einrichten (auch auf dem MacBook):
     `git remote add upstream https://github.com/ryanbr/noop.git && git fetch upstream`
 - [x] Branch-Strategie: `main` = 1:1 Upstream, `custom` = eigene Änderungen (regelmäßig auf `main` rebasen)
-- [ ] Eigene Bundle-ID + Apple-Team in `project.yml` – **als einzelner, isolierter Commit** → lokal auf dem MacBook
+- [ ] Eigene Bundle-ID + Apple-Team → lokal auf dem MacBook, **ohne Commit**
+  - Nicht in `project.yml` eintragen: Das Repo liest `BUNDLE_ID_PREFIX` und `DEVELOPMENT_TEAM` aus der
+    gitignorierten `Config/BundleIdSecrets.xcconfig` (Vorlage: `Config/BundleIdSecrets.example.xcconfig`,
+    siehe `docs/IOS.md`). So entsteht kein Upstream-Konflikt, und die Werte überleben jedes `xcodegen generate`.
 - [x] GitHub Action: täglicher Upstream-Sync von `main` (Fehler bei Konflikt → Issue/Benachrichtigung) → `.github/workflows/upstream-sync.yml`
 - [x] `.gitignore` um `research/data/`, `*.sqlite`, `*.zip`, `.env` erweitern
 - [x] Prüfen: Welche Packages bauen unter Linux? (`cd Packages/StrandAnalytics && swift build && swift test`) → Ergebnis siehe unten
