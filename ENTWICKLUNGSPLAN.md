@@ -60,14 +60,82 @@ noop/
 ## 4. Phasen
 
 ### Phase 0: Fork & Infrastruktur
-- [ ] Fork von `ryanbr/noop` anlegen, `upstream` als Remote hinzufügen
-- [ ] Branch-Strategie: `main` = 1:1 Upstream, `custom` = eigene Änderungen (regelmäßig auf `main` rebasen)
-- [ ] Eigene Bundle-ID + Apple-Team in `project.yml` – **als einzelner, isolierter Commit**
-- [ ] GitHub Action: täglicher Upstream-Sync von `main` (Fehler bei Konflikt → Issue/Benachrichtigung)
-- [ ] `.gitignore` um `research/data/`, `*.sqlite`, `*.zip`, `.env` erweitern
-- [ ] Prüfen: Welche Packages bauen unter Linux? (`cd Packages/StrandAnalytics && swift build && swift test`) → Ergebnis hier dokumentieren
+- [x] Fork von `ryanbr/noop` anlegen, `upstream` als Remote hinzufügen
+  - Fork `robertloewen/noop` existiert (GitHub-Fork, **öffentlich**, Issues deaktiviert).
+  - `upstream` ist nur ein lokales Remote, also pro Klon einmal einrichten (auch auf dem MacBook):
+    `git remote add upstream https://github.com/ryanbr/noop.git && git fetch upstream`
+- [x] Branch-Strategie: `main` = 1:1 Upstream, `custom` = eigene Änderungen (regelmäßig auf `main` rebasen)
+- [ ] Eigene Bundle-ID + Apple-Team in `project.yml` – **als einzelner, isolierter Commit** → lokal auf dem MacBook
+- [x] GitHub Action: täglicher Upstream-Sync von `main` (Fehler bei Konflikt → Issue/Benachrichtigung) → `.github/workflows/upstream-sync.yml`
+- [x] `.gitignore` um `research/data/`, `*.sqlite`, `*.zip`, `.env` erweitern
+- [x] Prüfen: Welche Packages bauen unter Linux? (`cd Packages/StrandAnalytics && swift build && swift test`) → Ergebnis siehe unten
 
 **Ergebnis:** Fork baut lokal auf dem MacBook, App läuft auf dem iPhone, Upstream-Sync funktioniert.
+
+#### Upstream-Sync: einmalige Einrichtung (manuell in GitHub)
+1. **Actions im Fork aktivieren** (Tab „Actions“ → „I understand my workflows, enable them“). In Forks sind
+   Workflows standardmäßig aus.
+2. **`custom` als Default-Branch setzen** (Settings → General → Default branch). Geplante Workflows
+   (`schedule`) laufen nur vom Default-Branch; die Action liegt nur auf `custom`, damit `main` 1:1 bleibt.
+   Alternativ manuell über „Run workflow“ starten.
+3. **Secret `UPSTREAM_SYNC_TOKEN`** anlegen: Fine-grained PAT, nur dieses Repo, Rechte *Contents* und
+   *Workflows* (read/write). Ohne Workflows-Recht lehnt GitHub jeden Push ab, der Upstream-Änderungen an
+   `.github/workflows/**` enthält – das passiert bei NOOP regelmäßig. Ohne Secret nutzt die Action
+   `GITHUB_TOKEN` und schlägt dann fehl.
+4. Optional **Issues aktivieren** (Settings → Features). Dann legt die Action bei Problemen ein Issue
+   „Upstream sync needs attention“ an bzw. kommentiert das offene. Ohne Issues ist der fehlgeschlagene
+   Lauf (plus GitHubs Fehler-Mail) die Benachrichtigung.
+
+Was die Action macht (täglich 03:41 UTC): `main` per Fast-Forward auf `upstream/main` bringen (schlägt fehl,
+wenn `main` eigene Commits hat) und danach `custom` probeweise auf `main` mergen, **ohne zu pushen**. Bei
+Konflikt: Fehlschlag mit Liste der Konfliktdateien. Das Rebasen von `custom` bleibt Handarbeit.
+Lokal getestet mit Wegwerf-Repos: sauberer Fast-Forward, Konflikt in `custom` und abweichendes `main`
+werden jeweils korrekt erkannt.
+
+Hinweis: Mit `main` kommen auch die Upstream-Workflows in den Fork (u. a. `prune-stale-branches.yml`
+wöchentlich, löscht nur Branches gemergter/geschlossener PRs). Wer die nicht will, deaktiviert sie
+einzeln im Actions-Tab statt die Dateien zu ändern.
+
+#### Linux-Build-Check (2026-10-24, Ubuntu 24.04 x86_64, Swift 6.2.1)
+
+| Package | `swift build` | `swift test` | Anmerkung |
+|---|---|---|---|
+| `Packages/WhoopProtocol` | ✅ | ✅ 816 Tests (1 Skip) | ohne Zusatz-Setup |
+| `Packages/OuraProtocol` | ✅ | ✅ 267 Tests | ohne Zusatz-Setup |
+| `Packages/PolarProtocol` | ✅ | ✅ 25 Tests | ohne Zusatz-Setup |
+| `Packages/StrandAnalytics` | ✅ | ✅ 2143 Tests | braucht Snapshot-SQLite (s. u.) |
+| `Packages/WhoopStore` | ✅ | ✅ 621 Tests | braucht Snapshot-SQLite |
+| `Packages/NoopLocalAccess` | ✅* | ✅ 14 Tests | braucht Snapshot-SQLite |
+| `Packages/StrandImport` | ❌ | ❌ | **Upstream-Bug**, s. u.; mit lokalem Fix: ✅ 327 Tests (1 Skip) |
+| `Packages/StrandDesign` | ❌ | ❌ | SwiftUI, nur macOS (erwartet) |
+| `Tools/SleepPSG` | ✅ | ✅ 33 Tests | |
+| `Tools/Backfill` | ❌ | – | hängt an StrandImport; mit lokalem Fix ✅ (keine Tests) |
+| `Tools/SleepBench` | ❌ | ❌ | `import SQLite3` ist Darwin-only |
+
+\* ohne Snapshot-SQLite schlägt der Link-Schritt fehl (`undefined reference to sqlite3_snapshot_open`).
+
+**Konsequenz für Phase 2:** `StrandAnalytics` baut und testet unter Linux vollständig →
+`Tools/ScoreCompare` kann in der Cloud gebaut werden; der Python-Port-Fallback ist nicht nötig.
+
+**Setup Snapshot-SQLite** (Rezept aus `docs/BUILD.md` → „Swift package tests on Linux“):
+- `swift.org`-Toolchain entpacken; Systempakete laut `AGENTS.md` (waren im Container bereits da).
+- In der Claude-Code-Cloud ist `sqlite.org` vom Proxy gesperrt. Ersatzquelle: das npm-Paket
+  `better-sqlite3` (13.0.3) bündelt dieselbe Amalgamation 3.53.4 unter `package/deps/sqlite3/`.
+  Achtung: Die Datei ist **nicht** byte-identisch zur sqlite.org-Version (SHA-256 weicht vom Wert in
+  `docs/BUILD.md` ab, better-sqlite3 patcht). Für lokale Tests okay, für alles andere die Originalquelle nehmen.
+- Bauen: `cc -O2 -shared -fPIC -DSQLITE_ENABLE_SNAPSHOT=1 sqlite3.c -o libsqlite3.so.0 -lpthread -lm`,
+  dann `ln -s libsqlite3.so.0 libsqlite3.so`.
+- Testen: `LD_LIBRARY_PATH=$DIR swift test -Xcc -I$DIR -Xlinker -L$DIR`.
+- **Zusätzlich für `StrandImport`/`Backfill`:** ZIPFoundation holt zlib per pkg-config, SwiftPM setzt dabei
+  `-L/usr/lib/x86_64-linux-gnu` **vor** das eigene `-L`, sodass die System-SQLite (ohne Snapshot) gewinnt.
+  Workaround: eigene `zlib.pc` ohne `-L` (`Libs: -lz`) in `$DIR/pc` ablegen und `PKG_CONFIG_PATH=$DIR/pc` setzen.
+  Das fehlt in `docs/BUILD.md`.
+
+**Upstream-Bug `StrandImport`:** `Sources/StrandImport/XlsxSheet.swift` nutzt `XMLParser`, importiert aber
+nicht `FoundationXML` (die Nachbardateien `GpxParser.swift`, `TcxParser.swift` usw. tun es per
+`#if canImport(FoundationXML)`). Unter Linux bricht deshalb der Compile ab; `docs/BUILD.md` behauptet
+noch „builds + tests“. Für den Test lokal geflickt, **nicht committet** (Upstream-Code bleibt unangetastet).
+Der Fix sind drei Zeilen und gehört als PR an `ryanbr/noop`, nicht in `custom`.
 
 ### Phase 1: Datenbasis (historische WHOOP-Daten)
 - [ ] WHOOP-Datenexport anfordern (ZIP: `physiological_cycles.csv`, `sleeps.csv`, `workouts.csv`, `journal_entries.csv`)
