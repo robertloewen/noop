@@ -69,6 +69,10 @@ noop/
   - Nicht in `project.yml` eintragen: Das Repo liest `BUNDLE_ID_PREFIX` und `DEVELOPMENT_TEAM` aus der
     gitignorierten `Config/BundleIdSecrets.xcconfig` (Vorlage: `Config/BundleIdSecrets.example.xcconfig`,
     siehe `docs/IOS.md`). So entsteht kein Upstream-Konflikt, und die Werte überleben jedes `xcodegen generate`.
+  - Ohne Apple Watch lässt sich die eingebettete Watch-App mit kostenloser Apple-ID nicht signieren.
+    Statt `xcodegen generate` deshalb **`Tools/fork/generate-ios.sh`** nutzen: erzeugt das Projekt ohne
+    Watch-Einbettung (aus einer gitignorierten Kopie `project.fork.yml`, `project.yml` bleibt unverändert)
+    und übernimmt die in Xcode gewählte Team-ID einmalig nach `Config/BundleIdSecrets.xcconfig`.
 - [x] GitHub Action: täglicher Upstream-Sync von `main` (Fehler bei Konflikt → Issue/Benachrichtigung) → `.github/workflows/upstream-sync.yml`
 - [x] `.gitignore` um `research/data/`, `*.sqlite`, `*.zip`, `.env` erweitern
 - [x] Prüfen: Welche Packages bauen unter Linux? (`cd Packages/StrandAnalytics && swift build && swift test`) → Ergebnis siehe unten
