@@ -161,7 +161,11 @@ Der Fix sind drei Zeilen und gehört als PR an `ryanbr/noop`, nicht in `custom`.
 - Logbuch: 210 identische Doppelzeilen im Export, beim Import zusammengeführt.
 - Ausreißer (> 4 MAD) bei Recovery/RHR/HRV fallen jeweils auf dieselben Tage → echte schlechte Nächte,
   keine Messfehler; nicht entfernen.
-- Wechsel 4.0 → 5.0 ist in den Monatsmedianen nicht als Sprung sichtbar → Datum muss manuell erfasst werden.
+- Wechsel 4.0 → 5.0: laut Nutzer Nov./Dez. 2025. In den Daten am klarsten am **2025-12-07**: Tagesbelastung
+  (12,7 → 8,8), Ø-Puls (75,7 → 71,0) und Energie fallen, obwohl Trainings zunehmen (9 → 10, 324 → 435 Min.),
+  also eher Gerät als Verhalten. Schlafphasen bleiben gleich. Als Schätzung in `research/device_periods.csv`
+  erfasst; genaues Datum (z. B. Bestellbestätigung) bei Gelegenheit nachtragen.
+- 2026-09-18: 5.0 verloren. Seit Ende Oktober 2026 wieder ein 4.0, neues 5.0 bestellt → Start von Phase 4.
 
 ### Phase 2: Ebene 1 – Score-Logik prüfen (ohne Rohdaten)
 - [ ] `Tools/ScoreCompare`: Swift-CLI, die `RecoveryScorer` mit vorgegebenen Inputs (HRV, RHR, Atemfrequenz, Sleep Performance, Hauttemp.) aufruft → JSON

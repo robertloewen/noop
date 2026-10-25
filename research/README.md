@@ -16,6 +16,17 @@ Writes `research/data/whoop.sqlite` with the tables `cycles`, `sleeps`, `workout
 NOOP's own canonical keys (`recovery_score_pct`, `heart_rate_variability_ms`, …). Each timestamp is
 stored twice, as `*_utc` and `*_local`. Re-importing a newer export upserts, so it is safe to repeat.
 
+## Mark which strap recorded which day
+
+The export does not say. Keep the periods in `research/device_periods.csv` (dates only, committed),
+then:
+
+```bash
+python3 -m research.importers.device_periods
+```
+
+This adds the table `device_periods` and the view `cycles_with_device` (= `cycles` plus `device`).
+
 ## Tests
 
 Synthetic data only:
