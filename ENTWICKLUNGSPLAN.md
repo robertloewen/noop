@@ -148,12 +148,20 @@ noch „builds + tests“. Für den Test lokal geflickt, **nicht committet** (Up
 Der Fix sind drei Zeilen und gehört als PR an `ryanbr/noop`, nicht in `custom`.
 
 ### Phase 1: Datenbasis (historische WHOOP-Daten)
-- [ ] WHOOP-Datenexport anfordern (ZIP: `physiological_cycles.csv`, `sleeps.csv`, `workouts.csv`, `journal_entries.csv`)
-- [ ] Importer in `research/importers/` → lokale SQLite (`research/data/whoop.sqlite`)
+- [x] WHOOP-Datenexport anfordern (ZIP: `physiological_cycles.csv`, `sleeps.csv`, `workouts.csv`, `journal_entries.csv`)
+- [x] Importer in `research/importers/` → lokale SQLite (`research/data/whoop.sqlite`) → `research/importers/whoop_export.py`, siehe `research/README.md`
 - [ ] Datenqualität: Lücken, Ausreißer, **Bruch beim Wechsel 4.0 → 5.0** markieren
 - [ ] Explorative Auswertung: Verteilungen, Korrelationen HRV / RHR / Schlaf / Recovery
 
 **Ergebnis:** Saubere, versionierte Analyse-Datenbasis über ~2 Jahre.
+
+#### Stand Import (Export vom 2026-10-23, deutsch)
+- Zyklen 672 (Recovery-Werte 665) · Schlaf 677 (12 Nickerchen) · Trainings 318 · Logbuch 23 057 (44 Fragen)
+- Zeitraum 2024-11-18 bis 2026-09-18; danach 34 Tage ohne Zyklen bis zum Exportdatum.
+- Logbuch: 210 identische Doppelzeilen im Export, beim Import zusammengeführt.
+- Ausreißer (> 4 MAD) bei Recovery/RHR/HRV fallen jeweils auf dieselben Tage → echte schlechte Nächte,
+  keine Messfehler; nicht entfernen.
+- Wechsel 4.0 → 5.0 ist in den Monatsmedianen nicht als Sprung sichtbar → Datum muss manuell erfasst werden.
 
 ### Phase 2: Ebene 1 – Score-Logik prüfen (ohne Rohdaten)
 - [ ] `Tools/ScoreCompare`: Swift-CLI, die `RecoveryScorer` mit vorgegebenen Inputs (HRV, RHR, Atemfrequenz, Sleep Performance, Hauttemp.) aufruft → JSON
