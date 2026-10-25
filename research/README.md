@@ -27,6 +27,21 @@ python3 -m research.importers.device_periods
 
 This adds the table `device_periods` and the view `cycles_with_device` (= `cycles` plus `device`).
 
+## Report: data patterns + NOOP vs WHOOP (Phases 1–2)
+
+```bash
+pip install -r research/requirements.txt
+(cd Tools/ScoreCompare && swift build -c release)   # NOOP's own scorer as a CLI
+python3 -m research.compare.report
+```
+
+Writes `research/data/reports/report.html` (self-contained, readable on a phone) and `metrics.json`.
+Both stay in the gitignored data folder, because they describe personal health data.
+
+`Tools/ScoreCompare` runs the app's `ChargeBaselines` + `Baselines` + `RecoveryScorer` unchanged over
+nightly WHOOP values, so the comparison measures NOOP's formula and nothing else. On Linux it needs the
+snapshot-enabled SQLite described in ENTWICKLUNGSPLAN.md (Phase 0).
+
 ## Tests
 
 Synthetic data only:

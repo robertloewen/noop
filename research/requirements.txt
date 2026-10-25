@@ -1,1 +1,5 @@
-# Standard library only for now. Analysis dependencies (pandas, matplotlib, …) get pinned here when added.
+# Importers: standard library only.
+# Analysis (research/compare/report.py):
+numpy>=2.0
+scipy>=1.13
+matplotlib>=3.9

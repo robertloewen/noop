@@ -150,8 +150,8 @@ Der Fix sind drei Zeilen und gehört als PR an `ryanbr/noop`, nicht in `custom`.
 ### Phase 1: Datenbasis (historische WHOOP-Daten)
 - [x] WHOOP-Datenexport anfordern (ZIP: `physiological_cycles.csv`, `sleeps.csv`, `workouts.csv`, `journal_entries.csv`)
 - [x] Importer in `research/importers/` → lokale SQLite (`research/data/whoop.sqlite`) → `research/importers/whoop_export.py`, siehe `research/README.md`
-- [ ] Datenqualität: Lücken, Ausreißer, **Bruch beim Wechsel 4.0 → 5.0** markieren
-- [ ] Explorative Auswertung: Verteilungen, Korrelationen HRV / RHR / Schlaf / Recovery
+- [x] Datenqualität: Lücken, Ausreißer, **Bruch beim Wechsel 4.0 → 5.0** markieren
+- [x] Explorative Auswertung: Verteilungen, Korrelationen HRV / RHR / Schlaf / Recovery → `research/compare/report.py` (Teil 1)
 
 **Ergebnis:** Saubere, versionierte Analyse-Datenbasis über ~2 Jahre.
 
@@ -168,14 +168,26 @@ Der Fix sind drei Zeilen und gehört als PR an `ryanbr/noop`, nicht in `custom`.
 - 2026-09-18: 5.0 verloren. Seit Ende Oktober 2026 wieder ein 4.0, neues 5.0 bestellt → Start von Phase 4.
 
 ### Phase 2: Ebene 1 – Score-Logik prüfen (ohne Rohdaten)
-- [ ] `Tools/ScoreCompare`: Swift-CLI, die `RecoveryScorer` mit vorgegebenen Inputs (HRV, RHR, Atemfrequenz, Sleep Performance, Hauttemp.) aufruft → JSON
-  - Fallback, falls Linux-Build scheitert: Logik 1:1 in Python portieren, gegen Swift-Tests verifizieren
-- [ ] NOOP-Recovery mit **WHOOPs eigenen Inputs** füttern → mit WHOOP-Recovery vergleichen
-- [ ] Eigenes Nachbau-Modell der WHOOP-Recovery fitten (gleitende persönliche Baselines, logistische Funktion)
-- [ ] Getrennte Auswertung 4.0-Zeitraum / 5.0-Zeitraum
-- [ ] Report (`research/compare/report_ebene1.md` + Grafiken)
+- [x] `Tools/ScoreCompare`: Swift-CLI, die `RecoveryScorer` mit vorgegebenen Inputs (HRV, RHR, Atemfrequenz, Sleep Performance, Hauttemp.) aufruft → CSV
+  - Kein Python-Port nötig: baut unter Linux (Snapshot-SQLite, s. Phase 0). Nutzt `ChargeBaselines` + `Baselines` + `RecoveryScorer` unverändert.
+- [x] NOOP-Recovery mit **WHOOPs eigenen Inputs** füttern → mit WHOOP-Recovery vergleichen
+- [x] Eigenes Nachbau-Modell der WHOOP-Recovery fitten (gleitende persönliche Baselines, logistische Funktion)
+- [x] Getrennte Auswertung 4.0-Zeitraum / 5.0-Zeitraum
+- [x] Report → `research/data/reports/report.html` (gitignored, persönliche Daten; Erzeugung: `python3 -m research.compare.report`)
 
 **Ergebnis:** Wissen, wie nah NOOPs Formel an WHOOP ist und wie WHOOP vermutlich gewichtet.
+
+#### Befunde Ebene 1 (Stand 2026-10-25, 662 Nächte, zeitlicher Split 70/30)
+- NOOP wie ausgeliefert: MAE 11,8, Bias −9,6 (NOOP zu niedrig), r 0,92, Zonen gleich 68 %, κ 0,48.
+  Kaum Unterschied 4.0 vs 5.0 (MAE 11,7 / 11,8). Der Fehler ist vor allem **Versatz + zu steile Kurve**:
+  NOOP drückt schwache Nächte gegen 0.
+- Nur die Logistik neu anpassen (NOOP-Gewichte bleiben), 30-Tage-Baseline: Test-MAE **4,6**, r 0,97, κ 0,77
+  (a = 0,85, k = 0,84 statt App a = 0,32, k = 1,60). Erfüllt die Zielwerte aus Abschnitt 5.
+- Freies Nachbau-Modell, 30-Tage-Baseline: Test-MAE 4,0, r 0,98, κ 0,81. HRV dominiert (~3/4 des Gewichts),
+  Ruhepuls trägt neben HRV fast nichts bei, Schlafleistung ~1/8.
+- Baseline-Fenster: 30 Tage ist bei allen Varianten am besten oder gleichauf; die App nutzt 21.
+- **Kandidat für Phase 5/6:** nur Kurve (a, k) + Fensterlänge konfigurierbar machen. Kleinster Eingriff, größter Effekt.
+  Offen: Ob der Effekt mit NOOPs *eigenen* Messwerten (Phase 4) genauso trägt, denn hier rechnet NOOP mit WHOOPs HRV/RHR.
 
 ### Phase 3: WHOOP-API-Sync
 - [ ] App im WHOOP Developer Dashboard registrieren
