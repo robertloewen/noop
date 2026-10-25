@@ -78,9 +78,12 @@ noop/
 #### Upstream-Sync: einmalige Einrichtung (manuell in GitHub)
 1. **Actions im Fork aktivieren** (Tab „Actions“ → „I understand my workflows, enable them“). In Forks sind
    Workflows standardmäßig aus.
-2. **`custom` als Default-Branch setzen** (Settings → General → Default branch). Geplante Workflows
+   GitHub registriert Workflow-Dateien erst bei einem Push **nach** dem Aktivieren. Steht im Actions-Tab
+   „No workflows found“, obwohl Dateien da sind, fehlt dieser Push noch (so geschehen am 2026-10-25).
+2. ✅ **`custom` als Default-Branch setzen** (erledigt 2026-10-25) (Settings → General → Default branch). Geplante Workflows
    (`schedule`) laufen nur vom Default-Branch; die Action liegt nur auf `custom`, damit `main` 1:1 bleibt.
    Alternativ manuell über „Run workflow“ starten.
+   Außerdem unter Settings → Actions → General: „Allow all actions …“ und *Workflow permissions* „Read and write“ (erledigt).
 3. **Secret `UPSTREAM_SYNC_TOKEN`** anlegen: Fine-grained PAT, nur dieses Repo, Rechte *Contents* und
    *Workflows* (read/write). Ohne Workflows-Recht lehnt GitHub jeden Push ab, der Upstream-Änderungen an
    `.github/workflows/**` enthält – das passiert bei NOOP regelmäßig. Ohne Secret nutzt die Action
