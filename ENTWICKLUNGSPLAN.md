@@ -201,6 +201,10 @@ Der Fix sind drei Zeilen und gehört als PR an `ryanbr/noop`, nicht in `custom`.
 
 ### Phase 4: Ebene 2 – Paralleltragen (Rohdaten)
 - [ ] Setup: **4.0 an NOOP** (Rohdaten), **5.0 an WHOOP-App** (Referenz)
+  - **Regel: ein Band, eine App.** NOOP holt den Bandspeicher ab und bestätigt ihn dem Band (Trim-Cursor,
+    `docs/BLE_REVERSE_ENGINEERING.md` → „Safe offload + trim“). Hängt dasselbe Band zusätzlich an der WHOOP-App,
+    fehlen ihr Teile der Nacht. Am 2026-10-26 so passiert: WHOOP erkannte den Schlaf (21:42–8:24), Stress-Kurve
+    mit Lücken, aber keine Schlafleistung und keine Recovery. Vor dem Umstecken das Band in der anderen App entkoppeln.
 - [ ] Optional testen: 5.0 an WHOOP-App + NOOP liest Live-HR über Standard-BLE-HR-Profil (ohne Bond) – kommen R-R-Intervalle mit? Stabil über Nacht?
 - [ ] NOOP-Rohdatenexport nutzen (siehe `docs/RAW_DATA_CAPTURE.md`) → Importer in `research/importers/`
 - [ ] Tagesweise Zuordnung NOOP ↔ WHOOP (WHOOP-Cycles laufen nach Schlaf, nicht nach Kalendertag!)
