@@ -232,6 +232,9 @@ Der Fix sind drei Zeilen und gehört als PR an `ryanbr/noop`, nicht in `custom`.
 - [ ] Lokal auf dem MacBook bauen, auf dem iPhone testen
 
 ### Phase 7: Optische Anpassungen
+- Arbeitsweise ab 2026-11: Claude Code direkt auf dem Mac in `~/Developer/noop`. Regeln in `CLAUDE.local.md`
+  (Branch `custom`, nach jeder Änderung committen und pushen, Build per `Tools/fork/install-ios.sh`).
+- Entwürfe: Startseite im WHOOP-Stil (Dark + AMOLED) und Einstellung „Dunkelmodus“, Farbwerte in `CLAUDE.local.md`.
 - [ ] Eigene Farbwelt/Fonts über **Design-Tokens** in `Packages/StrandDesign/` (z. B. `MyTheme.swift`)
 - [ ] App-Name + Icon über `project.yml` / Asset-Katalog
 - [ ] Größere UI-Änderungen (eigenes Dashboard) als **eigene Views**, an wenigen Stellen eingebunden
